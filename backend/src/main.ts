@@ -1,15 +1,21 @@
-import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { AppModule } from '@/app.module';
+import { ValidationPipe } from '@nestjs/common';
+import { setupSwagger } from '@/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.enableCors();
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
 
-  // TODO: restrict in production
-  app.enableCors({ origin: '*' });
+  setupSwagger(app);
 
-  // ValidationPipe intentionally not added
   await app.listen(3000);
-  console.log('Server running on port 3000');
 }
 bootstrap();
