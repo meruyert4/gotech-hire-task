@@ -23,7 +23,6 @@ import { ChatModule } from '@/chat/chat.module';
         database: 'chatdb',
         autoLoadEntities: true,
         synchronize: true,
-        dropSchema: true,
       }),
       inject: [ConfigService],
     }),

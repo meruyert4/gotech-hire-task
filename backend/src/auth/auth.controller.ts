@@ -1,8 +1,9 @@
-import { Controller, Post, Body, Res } from '@nestjs/common';
+import { Controller, Post, Get, Body, Res, UseGuards, Req } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -59,5 +60,15 @@ export class AuthController {
       sameSite: 'strict',
     });
     return { message: 'Logged out successfully' };
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current authenticated user' })
+  @ApiResponse({ status: 200, description: 'Returns the current user.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  getMe(@Req() req: any) {
+    return req.user;
   }
 }

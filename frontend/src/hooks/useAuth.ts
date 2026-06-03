@@ -1,24 +1,27 @@
-import { useState } from 'react';
+import { useGetMeQuery, useLogoutMutation, api } from '@/store/api';
+import { useDispatch } from 'react-redux';
 
 export function useAuth() {
-  const [userId, setUserId] = useState<number | null>(
-    localStorage.getItem('userId') ? parseInt(localStorage.getItem('userId') as string) : null,
-  );
-  const [username, setUsername] = useState<string | null>(localStorage.getItem('username'));
+  const { data, isLoading, refetch } = useGetMeQuery();
+  const [logoutApi] = useLogoutMutation();
+  const dispatch = useDispatch();
 
-  const login = (newUserId: number, newUsername: string) => {
-    localStorage.setItem('userId', String(newUserId));
-    localStorage.setItem('username', newUsername);
-    setUserId(newUserId);
-    setUsername(newUsername);
+  const logout = async () => {
+    try {
+      await logoutApi({}).unwrap();
+    } catch (e) {
+      console.error('Logout failed', e);
+    } finally {
+      // Clear the RTK Query cache to reset the app state
+      dispatch(api.util.resetApiState());
+    }
   };
 
-  const logout = () => {
-    localStorage.removeItem('userId');
-    localStorage.removeItem('username');
-    setUserId(null);
-    setUsername(null);
+  return {
+    userId: data?.userId || null,
+    username: data?.username || null,
+    isLoading,
+    refetch,
+    logout,
   };
-
-  return { userId, username, login, logout };
 }

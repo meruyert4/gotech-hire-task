@@ -1,17 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../store';
-import RoomList from '../components/RoomList';
-import MessageItem from '../components/MessageItem';
-import Header from '../components/Header.class';
-import { useChat } from '../hooks/useChat';
-import {
-  api,
-  useGetRoomsQuery,
-  useGetMessagesQuery,
-  useCreateRoomMutation,
-  useLogoutMutation,
-} from '../store/api';
+import { AppDispatch } from '@/store';
+import RoomList from '@/components/RoomList';
+import MessageItem from '@/components/MessageItem';
+import Header from '@/components/Header.class';
+import { useChat } from '@/hooks/useChat';
+import { api, useGetRoomsQuery, useCreateRoomMutation, useLogoutMutation } from '@/store/api';
+import { usePagination } from '@/hooks/usePagination';
+import { DEFAULT_LIMIT, DEFAULT_OFFSET } from '@/constants/sizes';
 
 interface Room {
   id: number;
@@ -41,12 +37,7 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
 
   const { data: rooms = [] } = useGetRoomsQuery({});
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const { data: messages = [], isFetching: loadingMessages } = useGetMessagesQuery(
-    selectedRoom?.id,
-    {
-      skip: !selectedRoom,
-    },
-  );
+  const { messages, loadingMessages, loadMore } = usePagination(selectedRoom?.id);
 
   const [createRoom] = useCreateRoomMutation();
   const [logoutApi] = useLogoutMutation();
@@ -55,6 +46,22 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomDesc, setNewRoomDesc] = useState('');
   const [showCreateRoom, setShowCreateRoom] = useState(false);
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [initialLoad, setInitialLoad] = useState(true);
+
+  // Reset initial load state when room changes
+  useEffect(() => {
+    setInitialLoad(true);
+  }, [selectedRoom]);
+
+  // Scroll to bottom only on the first load of messages for a room
+  useEffect(() => {
+    if (initialLoad && messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView();
+      setInitialLoad(false);
+    }
+  }, [messages, initialLoad]);
 
   useEffect(() => {
     if (!socket) return;
@@ -65,9 +72,13 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
       const targetRoomId = message.roomId || (selectedRoom ? selectedRoom.id : null);
       if (targetRoomId) {
         dispatch(
-          api.util.updateQueryData('getMessages', targetRoomId, (draft) => {
-            draft.push(message);
-          }),
+          api.util.updateQueryData(
+            'getMessages',
+            { roomId: targetRoomId, limit: DEFAULT_LIMIT, offset: DEFAULT_OFFSET },
+            (draft) => {
+              draft.push(message);
+            },
+          ),
         );
       }
     };
@@ -95,6 +106,10 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
       content: newMessage,
     });
     setNewMessage('');
+    // Scroll to bottom when user sends a message
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   const onCreateRoom = async () => {
@@ -113,6 +128,12 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSendMessage();
+    }
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (e.currentTarget.scrollTop === 0) {
+      loadMore();
     }
   };
 
@@ -157,22 +178,26 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
               {selectedRoom.description && <p>{selectedRoom.description}</p>}
             </div>
 
-            <div className="chat-messages">
-              {loadingMessages ? (
-                <p>Loading messages...</p>
-              ) : (
-                messages.map((msg: Message, index: number) => (
-                  <MessageItem key={msg.id || index} message={msg} isOwn={msg.userId === userId} />
-                ))
+            <div className="chat-messages" onScroll={handleScroll}>
+              {loadingMessages && (
+                <div style={{ textAlign: 'center', color: '#888', padding: '10px' }}>
+                  Loading more@.
+                </div>
               )}
+              {messages.map((msg: Message, index: number) => (
+                <MessageItem key={msg.id || index} message={msg} isOwn={msg.userId === userId} />
+              ))}
+              <div ref={messagesEndRef} />
             </div>
 
             <div className="chat-input-area">
               <input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type a message..."
+                onKeyDown={handleKeyPress}
+                placeholder="Type a message@."
                 className="chat-input"
+                maxLength={2000}
               />
               <button onClick={handleSendMessage} className="chat-send-btn">
                 Send

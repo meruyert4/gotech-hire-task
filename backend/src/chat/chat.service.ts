@@ -18,12 +18,12 @@ export class ChatService {
     const messages = await this.messageRepository.find({
       where: { roomId },
       relations: ['user'],
-      order: { createdAt: 'ASC' },
+      order: { createdAt: 'DESC' },
       take: limit,
       skip: offset,
     });
 
-    return messages.map((msg) => ({
+    return messages.reverse().map((msg) => ({
       ...msg,
       username: msg.user ? msg.user.username : 'unknown',
     }));

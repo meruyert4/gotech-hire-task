@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
-import { useLoginMutation } from '../store/api';
+import { useLoginMutation } from '@/store/api';
 
-interface Props {
-  onLogin: (userId: number, username: string) => void;
-}
-
-export default function LoginScreen({ onLogin }: Props) {
+export default function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [login, { isLoading, error }] = useLoginMutation();
@@ -13,8 +9,7 @@ export default function LoginScreen({ onLogin }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const data = await login({ username, password }).unwrap();
-      onLogin(data.userId, data.username);
+      await login({ username, password }).unwrap();
     } catch (err: unknown) {
       console.error('Login failed:', err);
     }

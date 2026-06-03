@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
-import { useRegisterMutation } from '../store/api';
+import { useRegisterMutation } from '@/store/api';
 
-interface Props {
-  onLogin: (userId: number, username: string) => void;
-}
-
-export default function RegisterScreen({ onLogin }: Props) {
+export default function RegisterScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [register, { isLoading, error }] = useRegisterMutation();
@@ -13,8 +9,7 @@ export default function RegisterScreen({ onLogin }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const data = await register({ username, password }).unwrap();
-      onLogin(data.userId, data.username);
+      await register({ username, password }).unwrap();
     } catch (err: unknown) {
       console.error('Registration failed:', err);
     }

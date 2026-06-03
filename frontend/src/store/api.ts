@@ -14,6 +14,7 @@ export const api = createApi({
         method: 'POST',
         body: credentials,
       }),
+      invalidatesTags: ['User'],
     }),
     register: builder.mutation({
       query: (credentials) => ({
@@ -21,12 +22,18 @@ export const api = createApi({
         method: 'POST',
         body: credentials,
       }),
+      invalidatesTags: ['User'],
     }),
     logout: builder.mutation({
       query: () => ({
         url: '/auth/logout',
         method: 'POST',
       }),
+      invalidatesTags: ['User'],
+    }),
+    getMe: builder.query<{ userId: number; username: string }, void>({
+      query: () => '/auth/me',
+      providesTags: ['User'],
     }),
     getRooms: builder.query({
       query: () => '/rooms',
@@ -40,9 +47,32 @@ export const api = createApi({
       }),
       invalidatesTags: ['Room'],
     }),
-    getMessages: builder.query({
-      query: (roomId) => `/chat/rooms/${roomId}/messages`,
-      providesTags: (result, error, roomId) => [{ type: 'Message', id: roomId }],
+    getMessages: builder.query<
+      {
+        id: number;
+        content: string;
+        userId: number;
+        createdAt: string;
+        username: string;
+        senderName: string;
+      }[],
+      { roomId: number; limit: number; offset: number }
+    >({
+      query: ({ roomId, limit, offset }) =>
+        `/chat/rooms/${roomId}/messages?limit=${limit}&offset=${offset}`,
+      serializeQueryArgs: ({ queryArgs }) => {
+        return queryArgs.roomId;
+      },
+      merge: (currentCache, newItems, { arg }) => {
+        if (arg.offset === 0) {
+          return newItems;
+        }
+        currentCache.unshift(...newItems);
+      },
+      forceRefetch({ currentArg, previousArg }) {
+        return currentArg?.offset !== previousArg?.offset;
+      },
+      providesTags: (result, error, { roomId }) => [{ type: 'Message', id: roomId }],
     }),
   }),
 });
@@ -51,6 +81,7 @@ export const {
   useLoginMutation,
   useRegisterMutation,
   useLogoutMutation,
+  useGetMeQuery,
   useGetRoomsQuery,
   useCreateRoomMutation,
   useGetMessagesQuery,

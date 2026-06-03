@@ -169,6 +169,9 @@
   max-width: 70%;
   padding: 8px 12px;
   border-radius: 12px;
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 .message-content.own {
   background-color: #0084ff;
