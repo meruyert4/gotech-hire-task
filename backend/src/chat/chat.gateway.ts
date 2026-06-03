@@ -12,7 +12,12 @@ import { ChatService } from '@/chat/chat.service';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '@/users/users.service';
 
-@WebSocketGateway({ cors: { origin: '*' } })
+@WebSocketGateway({
+  cors: {
+    origin: true,
+    credentials: true,
+  },
+})
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
@@ -25,11 +30,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: Socket) {
     try {
-      const authHeader =
-        client.handshake.headers.authorization || client.handshake.auth.token;
-      let token = authHeader;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.split(' ')[1];
+      const cookieString = client.handshake.headers.cookie;
+      let token = null;
+      if (cookieString) {
+        const cookies = cookieString.split(';').map((c) => c.trim());
+        const tokenCookie = cookies.find((c) => c.startsWith('token='));
+        if (tokenCookie) {
+          token = tokenCookie.split('=')[1];
+        }
       }
 
       if (!token) throw new Error('No auth token');

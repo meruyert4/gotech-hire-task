@@ -10,7 +10,11 @@ export class ChatService {
     private messageRepository: Repository<Message>,
   ) {}
 
-  async getMessages(roomId: number, limit = 50, offset = 0): Promise<any[]> {
+  async getMessages(
+    roomId: number,
+    limit = 50,
+    offset = 0,
+  ): Promise<(Message & { username: string })[]> {
     const messages = await this.messageRepository.find({
       where: { roomId },
       relations: ['user'],

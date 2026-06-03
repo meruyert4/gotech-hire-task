@@ -23,6 +23,7 @@ export class AuthService {
     return {
       token: this.jwtService.sign(payload),
       userId: user.id,
+      username: user.username,
     };
   }
 
@@ -44,6 +45,7 @@ export class AuthService {
     return {
       token: this.jwtService.sign(payload),
       userId: user.id,
+      username: user.username,
     };
   }
 }
