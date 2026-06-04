@@ -47,6 +47,21 @@ export const api = createApi({
       }),
       invalidatesTags: ['Room'],
     }),
+    updateRoom: builder.mutation({
+      query: ({ id, ...patch }) => ({
+        url: `/rooms/${id}`,
+        method: 'PATCH',
+        body: patch,
+      }),
+      invalidatesTags: ['Room'],
+    }),
+    deleteRoom: builder.mutation({
+      query: (id) => ({
+        url: `/rooms/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Room'],
+    }),
     getMessages: builder.query<
       {
         id: number;
@@ -84,5 +99,7 @@ export const {
   useGetMeQuery,
   useGetRoomsQuery,
   useCreateRoomMutation,
+  useUpdateRoomMutation,
+  useDeleteRoomMutation,
   useGetMessagesQuery,
 } = api;

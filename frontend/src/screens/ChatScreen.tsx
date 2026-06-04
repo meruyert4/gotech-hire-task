@@ -5,7 +5,14 @@ import RoomList from '@/components/RoomList';
 import MessageItem from '@/components/MessageItem';
 import Header from '@/components/Header.class';
 import { useChat } from '@/hooks/useChat';
-import { api, useGetRoomsQuery, useCreateRoomMutation, useLogoutMutation } from '@/store/api';
+import {
+  api,
+  useGetRoomsQuery,
+  useCreateRoomMutation,
+  useUpdateRoomMutation,
+  useDeleteRoomMutation,
+  useLogoutMutation,
+} from '@/store/api';
 import { usePagination } from '@/hooks/usePagination';
 import { DEFAULT_LIMIT, DEFAULT_OFFSET } from '@/constants/sizes';
 
@@ -40,19 +47,25 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
   const { messages, loadingMessages, loadMore } = usePagination(selectedRoom?.id);
 
   const [createRoom] = useCreateRoomMutation();
+  const [updateRoom] = useUpdateRoomMutation();
+  const [deleteRoom] = useDeleteRoomMutation();
   const [logoutApi] = useLogoutMutation();
 
   const [newMessage, setNewMessage] = useState('');
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomDesc, setNewRoomDesc] = useState('');
-  const [showCreateRoom, setShowCreateRoom] = useState(false);
-  
+  const [roomFormMode, setRoomFormMode] = useState<'none' | 'create' | 'edit'>('none');
+  const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [initialLoad, setInitialLoad] = useState(true);
 
   // Reset initial load state when room changes
   useEffect(() => {
     setInitialLoad(true);
+    // Focus the message input whenever the selected room changes
+    setTimeout(() => inputRef.current?.focus(), 50);
   }, [selectedRoom]);
 
   // Scroll to bottom only on the first load of messages for a room
@@ -112,12 +125,41 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
     }, 100);
   };
 
-  const onCreateRoom = async () => {
+  const handleSubmitRoomForm = async () => {
     if (!newRoomName.trim()) return;
-    await createRoom({ name: newRoomName, description: newRoomDesc });
+
+    if (roomFormMode === 'create') {
+      await createRoom({ name: newRoomName.trim(), description: newRoomDesc.trim() || undefined });
+    } else if (roomFormMode === 'edit' && editingRoomId) {
+      await updateRoom({
+        id: editingRoomId,
+        name: newRoomName.trim(),
+        description: newRoomDesc.trim() || null,
+      });
+    }
+
     setNewRoomName('');
     setNewRoomDesc('');
-    setShowCreateRoom(false);
+    setRoomFormMode('none');
+    setEditingRoomId(null);
+  };
+
+  const handleToggleCreateRoomForm = () => {
+    if (roomFormMode === 'create') {
+      setRoomFormMode('none');
+    } else {
+      setNewRoomName('');
+      setNewRoomDesc('');
+      setEditingRoomId(null);
+      setRoomFormMode('create');
+    }
+  };
+
+  const handleCancelRoomForm = () => {
+    setRoomFormMode('none');
+    setNewRoomName('');
+    setNewRoomDesc('');
+    setEditingRoomId(null);
   };
 
   const handleLogout = async () => {
@@ -137,19 +179,38 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
     }
   };
 
+  const handleEditRoom = (room: Room) => {
+    setNewRoomName(room.name);
+    setNewRoomDesc(room.description || '');
+    setEditingRoomId(room.id);
+    setRoomFormMode('edit');
+  };
+
+  const handleDeleteRoom = async (roomId: number) => {
+    const confirmed = window.confirm('Are you sure you want to delete this room?');
+    if (!confirmed) return;
+    await deleteRoom(roomId);
+    if (selectedRoom?.id === roomId) {
+      setSelectedRoom(null);
+    }
+  };
+
   return (
     <div className="chat-container">
       <div className="chat-sidebar">
-        <Header username={username} isConnected={isConnected} onLogout={handleLogout} />
+        <Header username={username} isConnected={isConnected} />
 
         <div className="chat-rooms-header">
           <h3>Rooms</h3>
-          <button onClick={() => setShowCreateRoom(!showCreateRoom)} className="chat-room-add-btn">
+          <button 
+            onClick={handleToggleCreateRoomForm} 
+            className="chat-room-add-btn"
+          >
             +
           </button>
         </div>
 
-        {showCreateRoom && (
+        {roomFormMode !== 'none' && (
           <div className="chat-create-room">
             <input
               placeholder="Room name"
@@ -161,12 +222,27 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
               value={newRoomDesc}
               onChange={(e) => setNewRoomDesc(e.target.value)}
             />
-            <button onClick={onCreateRoom}>Create</button>
+            <button onClick={handleSubmitRoomForm} className="chat-room-submit-btn">
+              {roomFormMode === 'create' ? 'Create' : 'Save'}
+            </button>
+            <button
+              onClick={handleCancelRoomForm}
+              className="chat-room-cancel-btn"
+            >
+              Cancel
+            </button>
           </div>
         )}
 
         {socket && (
-          <RoomList rooms={rooms} selectedRoom={selectedRoom} onSelectRoom={handleRoomSelect} />
+          <RoomList
+            rooms={rooms}
+            selectedRoom={selectedRoom}
+            onSelectRoom={handleRoomSelect}
+            onEditRoom={handleEditRoom}
+            onDeleteRoom={handleDeleteRoom}
+            onLogout={handleLogout}
+          />
         )}
       </div>
 
@@ -195,8 +271,9 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyDown={handleKeyPress}
-                placeholder="Type a message@."
+                placeholder="Type a message..."
                 className="chat-input"
+                ref={inputRef}
                 maxLength={2000}
               />
               <button onClick={handleSendMessage} className="chat-send-btn">
