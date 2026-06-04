@@ -14,7 +14,13 @@ import {
   useLogoutMutation,
 } from '@/store/api';
 import { usePagination } from '@/hooks/usePagination';
-import { DEFAULT_LIMIT, DEFAULT_OFFSET } from '@/constants/sizes';
+import {
+  DEFAULT_LIMIT,
+  DEFAULT_OFFSET,
+  FOCUS_TIMEOUT_MS,
+  SCROLL_TIMEOUT_MS,
+  MAX_MESSAGE_LENGTH,
+} from '@/constants/sizes';
 
 interface Room {
   id: number;
@@ -65,7 +71,7 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
   useEffect(() => {
     setInitialLoad(true);
     // Focus the message input whenever the selected room changes
-    setTimeout(() => inputRef.current?.focus(), 50);
+    setTimeout(() => inputRef.current?.focus(), FOCUS_TIMEOUT_MS);
   }, [selectedRoom]);
 
   // Scroll to bottom only on the first load of messages for a room
@@ -122,7 +128,7 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
     // Scroll to bottom when user sends a message
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+    }, SCROLL_TIMEOUT_MS);
   };
 
   const handleSubmitRoomForm = async () => {
@@ -260,8 +266,8 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
                   Loading more@.
                 </div>
               )}
-              {messages.map((msg: Message, index: number) => (
-                <MessageItem key={msg.id || index} message={msg} isOwn={msg.userId === userId} />
+              {messages.map((msg: Message) => (
+                <MessageItem key={msg.id} message={msg} isOwn={msg.userId === userId} />
               ))}
               <div ref={messagesEndRef} />
             </div>
@@ -274,7 +280,7 @@ export default function ChatScreen({ userId, username, onLogout }: Props) {
                 placeholder="Type a message..."
                 className="chat-input"
                 ref={inputRef}
-                maxLength={2000}
+                maxLength={MAX_MESSAGE_LENGTH}
               />
               <button onClick={handleSendMessage} className="chat-send-btn">
                 Send

@@ -42,9 +42,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       if (!token) throw new Error('No auth token');
 
-      const payload = this.jwtService.verify(token, {
-        secret: process.env.JWT_SECRET || 'supersecret',
-      });
+      const secret = process.env.JWT_SECRET;
+      if (!secret) throw new Error('JWT_SECRET is missing from environment variables');
+
+      const payload = this.jwtService.verify(token, { secret });
       const user = await this.usersService.findOneById(payload.sub);
 
       if (!user) {
