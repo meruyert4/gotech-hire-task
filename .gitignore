@@ -19,3 +19,5 @@ frontend/dist/
 .dockerignore
 
 .claude
+backend/package-lock.json
+frontend/package-lock.json
